@@ -1,0 +1,55 @@
+_schema-version: '3.1'
+ID: cap-concierge
+version: 1.0.0
+description: "A simple CAP project."
+parameters:
+  enable-parallel-deployments: true
+build-parameters:
+  before-all:
+    - builder: custom
+      commands:
+        - npx -p @sap/cds-dk cds build --production
+modules:
+  - name: cap-concierge-srv
+    type: nodejs
+    path: gen/srv
+    parameters:
+      buildpack: nodejs_buildpack
+    build-parameters:
+      builder: npm-ci
+    provides:
+      - name: srv-api # required by consumers of CAP services (e.g. approuter)
+        properties:
+          srv-url: ${default-url}
+    requires:
+      - name: xsuaa
+      - name: destination
+      - name: connectivity
+
+resources:
+  - name: xsuaa
+    type: org.cloudfoundry.managed-service
+    parameters:
+      service: xsuaa
+      service-name: cap-concierge-xsuaa
+      service-plan: application
+      path: ./xs-security.json
+      config:
+        xsappname: cap-concierge-${org}-${space}
+        tenant-mode: dedicated
+  - name: destination
+    type: org.cloudfoundry.managed-service
+    parameters:
+      service-name: cap-concierge-dest
+      service-keys:
+        - name: cap-concierge-dest-key
+      service: destination
+      service-plan: lite
+  - name: connectivity
+    type: org.cloudfoundry.managed-service
+    parameters:
+      service-name: cap-concierge-connectivity
+      service-keys:
+        - name: cap-concierge-connectivity-key
+      service: connectivity
+      service-plan: lite
